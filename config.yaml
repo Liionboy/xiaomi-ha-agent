@@ -1,5 +1,5 @@
 name: Xiaomi Home Assistant Agent
-version: 0.3.0
+version: 0.3.1
 slug: xiaomi_ha_agent
 description: AI-powered configuration assistant for Home Assistant, powered by Xiaomi MiMo
 url: https://github.com/Liionboy/xiaomi-ha-agent
