@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize Xiaomi client
     app.state.xiaomi = XiaomiClient(
-        api_key=***"xiaomi_api_key"],
+        api_key=app.state.config["xiaomi_api_key"],
         api_base=app.state.config["xiaomi_api_base"],
         model=app.state.config["xiaomi_model"],
     )

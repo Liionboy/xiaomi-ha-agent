@@ -9,11 +9,11 @@ class XiaomiClient:
 
     def __init__(
         self,
-        api_key: ***,
+        api_key: str,
         api_base: str = "https://api.xiaomi.com/v1",
         model: str = "mimo-v2.6-pro",
     ):
-        self.api_key = ***
+        self.api_key = api_key
         self.api_base = api_base.rstrip("/")
         self.model = model
         self.client = httpx.AsyncClient(
