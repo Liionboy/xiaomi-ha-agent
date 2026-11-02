@@ -2,6 +2,7 @@
 
 import os
 import logging
+from pathlib import Path
 import httpx
 from typing import Optional
 
@@ -15,14 +16,21 @@ class HAClient:
         # HA Supervisor proxy API
         self.ha_url = os.getenv("HOMEASSISTANT_URL", "http://supervisor/core/api")
         
-        # Supervisor provides this credential automatically
-        var_name = "SUPERVISOR" + "_" + "TOKEN"
-        self.cred = os.getenv(var_name, "")
-        
+        # S6 stores the environment here; with-contenv normally restores it.
+        self.cred = os.environ.get("SUPERVISOR_TOKEN", "").strip()
+        source = "environment"
         if not self.cred:
-            logger.error("Supervisor credential not found!")
-        
-        logger.info(f"HAClient: url={self.ha_url}, has_cred={bool(self.cred)}")
+            credential_file = Path("/run/s6/container_environment/SUPERVISOR_TOKEN")
+            if credential_file.is_file():
+                self.cred = credential_file.read_text().strip()
+                source = "s6-container-environment"
+        if not self.cred:
+            raise RuntimeError(
+                "Supervisor credential unavailable. Start via /scripts/run.sh "
+                "with with-contenv; homeassistant_api must be enabled. "
+                "No personal access token or protection-mode change is required."
+            )
+        logger.info("HAClient: url=%s, authentication source=%s", self.ha_url, source)
         
         self.client = httpx.AsyncClient(
             base_url=self.ha_url,

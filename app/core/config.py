@@ -14,8 +14,8 @@ def load_config() -> dict:
     
     # Supervisor provides options in multiple possible locations
     possible_paths = [
-        Path("/data/options.yaml"),
         Path("/data/options.json"),
+        Path("/data/options.yaml"),
         Path("/app/options.yaml"),
         Path("/config/options.yaml"),
     ]
@@ -59,7 +59,7 @@ def load_config() -> dict:
         logger.warning("Options file not found, checking environment variables")
         
         # Log all environment variables for debugging
-        logger.info(f"All env vars: {dict(os.environ)}")
+        # Never log the environment: it contains administrator credentials.
         
         # Check various possible env var names
         api_key = os.getenv("XIAOMI_API_KEY") or os.getenv("xiaomi_api_key", "")

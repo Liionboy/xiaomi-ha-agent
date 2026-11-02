@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.3.4] - 2026-11-02
+
+### Fixed
+- Restore the Supervisor credential with S6 `with-contenv` before starting Python.
+- Read the S6 container environment as a fallback; refuse unauthenticated requests instead of sending an empty Bearer.
+- Preserve multi-tool assistant messages and reasoning, and send JSON tool results on every round.
+- Report the tool-round limit explicitly, without pretending background work continues.
+- Prefer Supervisor `/data/options.json`; no personal HA token or protection-mode changes required.
+
+### Security
+- Remove full environment logging and ineffective build-time DNS overrides.
+
+### Tests
+- Add regression coverage for environment/S6 credentials, missing credentials, proxy paths, service requests, multi-tool chaining and release packaging.
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),

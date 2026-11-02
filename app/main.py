@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Xiaomi Home Assistant Agent",
     description="AI-powered configuration assistant",
-    version="0.1.0",
+    version="0.3.4",
     lifespan=lifespan,
 )
 

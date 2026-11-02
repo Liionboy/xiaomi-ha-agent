@@ -28,10 +28,6 @@ WORKDIR /app
 COPY app/ .
 COPY scripts/ /scripts/
 
-# Ensure DNS resolution works in container
-RUN echo 'nameserver 8.8.8.8' >> /etc/resolv.conf || true
-RUN echo 'nameserver 8.8.4.4' >> /etc/resolv.conf || true
-
 # Make scripts executable
 RUN chmod +x /scripts/*.sh
 
@@ -42,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Ensure we're in the right directory for imports
 WORKDIR /app
 
-CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8100", "--workers", "1"]
+CMD ["/scripts/run.sh"]

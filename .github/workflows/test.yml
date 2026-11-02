@@ -1,0 +1,13 @@
+name: Add-on regression tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build actual add-on image
+        run: docker build -t xiaomi-ha-agent:test .
+      - name: Authentication, tool flow and release checks
+        run: docker run --rm --entrypoint python3 -v "$PWD:/repo:ro" xiaomi-ha-agent:test /repo/tests/test_regressions.py

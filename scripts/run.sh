@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/command/with-contenv bash
 # Startup script for Xiaomi Home Assistant Agent
 
-set -e
+set -euo pipefail
+cd /app
 
 echo "🚀 Starting Xiaomi Home Assistant Agent..."
 echo "=========================================="

@@ -1,6 +1,7 @@
 """Chat API endpoints."""
 
 import logging
+import json
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -89,12 +90,13 @@ async def chat_completion(request: ChatRequest):
             if not tool_calls_raw:
                 break  # AI done, no more tools to call
             
-            # Parse + execute each tool call
+            # Preserve the full assistant message once, including provider reasoning.
+            messages.append(dict(message))
+            # Return one JSON result per requested tool call.
             for tc in tool_calls_raw:
                 arguments = tc["function"]["arguments"]
                 if isinstance(arguments, str):
                     try:
-                        import json
                         arguments = json.loads(arguments)
                     except json.JSONDecodeError:
                         arguments = {}
@@ -114,17 +116,11 @@ async def chat_completion(request: ChatRequest):
                     logger.error(f"[iter {iteration}] Tool error: {tool_err}")
                     result = {"error": str(tool_err)}
                 
-                # Add assistant tool_call message (required by API format)
-                messages.append({
-                    "role": "assistant",
-                    "content": message.get("content") or "",
-                    "tool_calls": [tc],
-                })
                 # Add tool result
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
-                    "content": str(result),
+                    "content": json.dumps(result, ensure_ascii=False),
                 })
             
             # Call API again with tool results
@@ -136,7 +132,9 @@ async def chat_completion(request: ChatRequest):
             )
             message = response["choices"][0]["message"]
         
-        final_content = message.get("content", "") or "(no response)"
+        if message.get("tool_calls"):
+            message = {"content": "Am atins limita de 8 runde. Procesarea s-a oprit; nu rulează nimic în fundal."}
+        final_content = message.get("content", "") or "Nu am primit un răspuns final de la model."
         
         return ChatResponse(
             message=ChatMessage(
