@@ -35,4 +35,7 @@ RUN chmod +x /scripts/*.sh
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python3 -c "import httpx; httpx.get('http://localhost:8100/health').raise_for_status()"
 
+# Ensure we're in the right directory for imports
+WORKDIR /app
+
 CMD ["python3", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8100", "--workers", "1"]
