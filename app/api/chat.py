@@ -48,7 +48,11 @@ async def chat_completion(request: ChatRequest):
     config = app.state.config
     xiaomi = app.state.xiaomi
     mcp = app.state.mcp
-
+    
+    logger.info(f"Chat completion request received with {len(request.messages)} messages")
+    logger.info(f"Config keys: {list(config.keys())}")
+    logger.info(f"Xiaomi client initialized: {xiaomi is not None}")
+    
     try:
         # Convert messages to dict format
         messages = [msg.model_dump(exclude_none=True) for msg in request.messages]
@@ -64,12 +68,17 @@ async def chat_completion(request: ChatRequest):
         tools = mcp.get_schemas() if request.use_tools else None
 
         # Call Xiaomi API
+        logger.info(f"Calling Xiaomi API with model: {xiaomi.model}, base: {xiaomi.api_base}")
+        logger.info(f"Using {len(tools) if tools else 0} tools, {len(messages)} messages")
+        
         response = await xiaomi.chat_completion(
             messages=messages,
             tools=tools,
             temperature=request.temperature or config["temperature"],
             max_tokens=request.max_tokens or config["max_tokens"],
         )
+        
+        logger.info(f"Xiaomi API response received: {type(response)}")
 
         # Parse response
         choice = response["choices"][0]
@@ -97,8 +106,20 @@ async def chat_completion(request: ChatRequest):
         )
 
     except Exception as e:
-        logger.error(f"Chat completion error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Chat completion error: {type(e).__name__}: {e}", exc_info=True)
+        
+        # Check for specific error types
+        error_msg = str(e)
+        if "401" in error_msg or "unauthorized" in error_msg.lower():
+            error_msg = "Xiaomi API key is invalid or missing. Please check your configuration."
+        elif "404" in error_msg or "not found" in error_msg.lower():
+            error_msg = f"Model '{xiaomi.model}' not found. Please check your model configuration."
+        elif "timeout" in error_msg.lower():
+            error_msg = "Xiaomi API request timed out. Please try again."
+        elif "connection" in error_msg.lower():
+            error_msg = "Cannot connect to Xiaomi API. Please check your internet connection and API URL."
+        
+        raise HTTPException(status_code=500, detail=error_msg)
 
 
 @router.post("/execute-tool")
