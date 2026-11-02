@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-11-02
+
+### Fixed
+- **Iterative tool-call loop**: AI now executes ALL tool calls until done (max 8 rounds), instead of one-shot
+- Properly chains assistant tool_call messages with tool results for API format
+- Response only returns when AI finishes its full chain of tool calls
+
+
 ## [0.3.2] - 2026-11-02
 
 ### Fixed

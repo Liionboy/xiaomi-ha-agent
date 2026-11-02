@@ -80,85 +80,70 @@ async def chat_completion(request: ChatRequest):
         
         logger.info(f"Xiaomi API response received: {type(response)}")
 
-        # Parse response
-        choice = response["choices"][0]
-        message = choice["message"]
-
-        # Extract tool calls
-        tool_calls = None
-        if message.get("tool_calls"):
-            tool_calls = []
-            for tc in message["tool_calls"]:
-                # Parse arguments from JSON string to dict
+        # Iterative tool-call loop
+        all_tool_calls = []
+        message = response["choices"][0]["message"]
+        
+        for iteration in range(8):  # max 8 tool-call rounds
+            tool_calls_raw = message.get("tool_calls")
+            if not tool_calls_raw:
+                break  # AI done, no more tools to call
+            
+            # Parse + execute each tool call
+            for tc in tool_calls_raw:
                 arguments = tc["function"]["arguments"]
                 if isinstance(arguments, str):
                     try:
                         import json
                         arguments = json.loads(arguments)
-                    except json.JSONDecodeError as e:
-                        logger.warning(f"Failed to parse tool arguments as JSON: {e}")
+                    except json.JSONDecodeError:
                         arguments = {}
                 
-                tool_calls.append(ToolCall(
+                parsed_call = ToolCall(
                     id=tc["id"],
                     name=tc["function"]["name"],
                     arguments=arguments,
-                ))
-
-        # Execute tool calls if present
-        tool_results = []
-        if tool_calls:
-            for tc in tool_calls:
+                )
+                all_tool_calls.append(parsed_call)
+                
                 try:
-                    logger.info(f"Executing tool: {tc.name} with args: {tc.arguments}")
-                    result = await mcp.execute(tc.name, tc.arguments)
-                    tool_results.append({
-                        "tool_call_id": tc.id,
-                        "name": tc.name,
-                        "result": result,
-                    })
-                    logger.info(f"Tool result: {result}")
+                    logger.info(f"[iter {iteration}] Executing tool: {parsed_call.name} args={parsed_call.arguments}")
+                    result = await mcp.execute(parsed_call.name, parsed_call.arguments)
+                    logger.info(f"[iter {iteration}] Tool result: {str(result)[:200]}")
                 except Exception as tool_err:
-                    logger.error(f"Tool execution error: {tool_err}")
-                    tool_results.append({
-                        "tool_call_id": tc.id,
-                        "name": tc.name,
-                        "error": str(tool_err),
-                    })
+                    logger.error(f"[iter {iteration}] Tool error: {tool_err}")
+                    result = {"error": str(tool_err)}
+                
+                # Add assistant tool_call message (required by API format)
+                messages.append({
+                    "role": "assistant",
+                    "content": message.get("content") or "",
+                    "tool_calls": [tc],
+                })
+                # Add tool result
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": str(result),
+                })
             
-            # If tools were called, make another API call with tool results
-            if tool_results:
-                # Add tool results to messages
-                for tr in tool_results:
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tr["tool_call_id"],
-                        "content": str(tr.get("result", tr.get("error", ""))),
-                    })
-                
-                # Get final response
-                final_response = await xiaomi.chat_completion(
-                    messages=messages,
-                    temperature=request.temperature or config["temperature"],
-                    max_tokens=request.max_tokens or config["max_tokens"],
-                )
-                
-                final_message = final_response["choices"][0]["message"]
-                return ChatResponse(
-                    message=ChatMessage(
-                        role=final_message["role"],
-                        content=final_message.get("content", ""),
-                    ),
-                    tool_calls=tool_calls,
-                    usage=final_response.get("usage"),
-                )
+            # Call API again with tool results
+            response = await xiaomi.chat_completion(
+                messages=messages,
+                tools=tools,
+                temperature=request.temperature or config["temperature"],
+                max_tokens=request.max_tokens or config["max_tokens"],
+            )
+            message = response["choices"][0]["message"]
+        
+        final_content = message.get("content", "") or "(no response)"
         
         return ChatResponse(
             message=ChatMessage(
-                role=message["role"],
-                content=message.get("content", ""),
+                role="assistant",
+                content=final_content,
             ),
-            tool_calls=tool_calls,
+            tool_calls=all_tool_calls if all_tool_calls else None,
             usage=response.get("usage"),
         )
 
