@@ -105,6 +105,54 @@ async def chat_completion(request: ChatRequest):
                     arguments=arguments,
                 ))
 
+        # Execute tool calls if present
+        tool_results = []
+        if tool_calls:
+            for tc in tool_calls:
+                try:
+                    logger.info(f"Executing tool: {tc.name} with args: {tc.arguments}")
+                    result = await mcp.execute(tc.name, tc.arguments)
+                    tool_results.append({
+                        "tool_call_id": tc.id,
+                        "name": tc.name,
+                        "result": result,
+                    })
+                    logger.info(f"Tool result: {result}")
+                except Exception as tool_err:
+                    logger.error(f"Tool execution error: {tool_err}")
+                    tool_results.append({
+                        "tool_call_id": tc.id,
+                        "name": tc.name,
+                        "error": str(tool_err),
+                    })
+            
+            # If tools were called, make another API call with tool results
+            if tool_results:
+                # Add tool results to messages
+                for tr in tool_results:
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tr["tool_call_id"],
+                        "content": str(tr.get("result", tr.get("error", ""))),
+                    })
+                
+                # Get final response
+                final_response = await xiaomi.chat_completion(
+                    messages=messages,
+                    temperature=request.temperature or config["temperature"],
+                    max_tokens=request.max_tokens or config["max_tokens"],
+                )
+                
+                final_message = final_response["choices"][0]["message"]
+                return ChatResponse(
+                    message=ChatMessage(
+                        role=final_message["role"],
+                        content=final_message.get("content", ""),
+                    ),
+                    tool_calls=tool_calls,
+                    usage=final_response.get("usage"),
+                )
+        
         return ChatResponse(
             message=ChatMessage(
                 role=message["role"],
