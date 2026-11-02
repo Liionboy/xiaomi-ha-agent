@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.6] - 2026-11-02
+
+### Fixed
+- Improve config loading to correctly read Supervisor options from `/data/options.yaml`
+- Add detailed logging for config loading and validation
+- Ensure custom `xiaomi_api_base` URLs (e.g., `token-plan-ams.xiaomimimo.com`) are used from UI config
+
+## [0.1.5] - 2026-11-02
+
+### Fixed
+- Add Google DNS (8.8.8.8, 8.8.4.4) to container `/etc/resolv.conf` to fix DNS resolution failures
+- Improve error messages for DNS resolution errors (`Name does not resolve`)
+
+## [0.1.4] - 2026-11-02
+
+### Added
+- Detailed logging for chat completion requests (message count, config keys, client status)
+- Log API call parameters (model, base URL, tools count)
+- User-friendly error messages for common issues (401, 404, timeout, connection)
+
+## [0.1.3] - 2026-11-02
+
+### Added
+- CHANGELOG.md file to track all changes
+- Template for future releases
+
 ## [0.1.2] - 2026-11-02
 
 ### Fixed
