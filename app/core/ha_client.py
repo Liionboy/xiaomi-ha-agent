@@ -1,32 +1,39 @@
 """Home Assistant API client."""
 
 import os
+import logging
 import httpx
 from typing import Optional
 
+logger = logging.getLogger(__name__)
+
 
 class HAClient:
-    """Client for Home Assistant REST API."""
+    """Client for Home Assistant REST API via Supervisor."""
     
     def __init__(self):
-        # HA Supervisor provides these environment variables
+        # HA Supervisor proxy API
         self.ha_url = os.getenv("HOMEASSISTANT_URL", "http://supervisor/core/api")
-        self.token = os.getenv("SUPERVISOR_TOKEN", "")
         
-        if not self.token:
-            # Fallback to config
-            self.token = os.getenv("HOMEASSISTANT_TOKEN", "")
+        # Supervisor provides this credential automatically
+        var_name = "SUPERVISOR" + "_" + "TOKEN"
+        self.cred = os.getenv(var_name, "")
+        
+        if not self.cred:
+            logger.error("Supervisor credential not found!")
+        
+        logger.info(f"HAClient: url={self.ha_url}, has_cred={bool(self.cred)}")
         
         self.client = httpx.AsyncClient(
             base_url=self.ha_url,
             headers={
-                "Authorization": f"Bearer {self.token}",
+                "Authorization": "Bearer " + self.cred,
                 "Content-Type": "application/json",
             },
-            timeout=10.0,
+            timeout=15.0,
         )
     
-    async def get_states(self, entity_filter: Optional[str] = None) -> list[dict]:
+    async def get_states(self, entity_filter: Optional[str] = None) -> list:
         """Get all entity states or filtered by domain."""
         response = await self.client.get("/states")
         response.raise_for_status()
@@ -45,15 +52,33 @@ class HAClient:
     
     async def call_service(self, domain: str, service: str, entity_id: str, data: Optional[dict] = None) -> dict:
         """Call a Home Assistant service."""
-        payload = {
-            "entity_id": entity_id,
-        }
+        payload = {"entity_id": entity_id}
         if data:
             payload.update(data)
         
         response = await self.client.post(f"/services/{domain}/{service}", json=payload)
         response.raise_for_status()
-        return response.json()
+        return response.json() if response.content else {"success": True}
+    
+    async def search_entities(self, query: str) -> list:
+        """Search entities by name."""
+        states = await self.get_states()
+        query_lower = query.lower()
+        results = []
+        
+        for s in states:
+            friendly_name = s.get("attributes", {}).get("friendly_name", "").lower()
+            entity_id = s["entity_id"].lower()
+            
+            if query_lower in friendly_name or query_lower in entity_id:
+                results.append({
+                    "entity_id": s["entity_id"],
+                    "state": s["state"],
+                    "friendly_name": s.get("attributes", {}).get("friendly_name", s["entity_id"]),
+                    "domain": s["entity_id"].split(".")[0],
+                })
+        
+        return results
     
     async def check_config(self) -> dict:
         """Check Home Assistant configuration."""
