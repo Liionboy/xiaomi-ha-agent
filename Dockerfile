@@ -25,9 +25,8 @@ RUN apk add --no-cache \
 WORKDIR /app
 
 # Copy application code
-COPY app/ /app/
+COPY app/ .
 COPY scripts/ /scripts/
-WORKDIR /app
 
 # Make scripts executable
 RUN chmod +x /scripts/*.sh

@@ -14,7 +14,16 @@ async def list_tools():
     from main import app
 
     mcp = app.state.mcp
-    return {"tools": mcp.get_schemas()}
+    
+    # Return simplified format for Web UI
+    tools = []
+    for name, tool in mcp.tools.items():
+        tools.append({
+            "name": tool.name,
+            "description": tool.description,
+        })
+    
+    return {"tools": tools}
 
 
 @router.get("/info/{tool_name}")

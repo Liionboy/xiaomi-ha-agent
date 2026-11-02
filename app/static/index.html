@@ -277,9 +277,9 @@
 
                 if (data.tools && data.tools.length > 0) {
                     toolsList.innerHTML = data.tools.map(tool => `
-                        <div class="tool-item" onclick="showToolInfo('${tool.function.name}')">
-                            <div class="tool-name">${tool.function.name}</div>
-                            <div class="tool-desc">${tool.function.description}</div>
+                        <div class="tool-item" onclick="showToolInfo('${tool.name}')">
+                            <div class="tool-name">${tool.name}</div>
+                            <div class="tool-desc">${tool.description}</div>
                         </div>
                     `).join('');
                 } else {
