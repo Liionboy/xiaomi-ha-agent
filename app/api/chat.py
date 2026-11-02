@@ -87,14 +87,23 @@ async def chat_completion(request: ChatRequest):
         # Extract tool calls
         tool_calls = None
         if message.get("tool_calls"):
-            tool_calls = [
-                ToolCall(
+            tool_calls = []
+            for tc in message["tool_calls"]:
+                # Parse arguments from JSON string to dict
+                arguments = tc["function"]["arguments"]
+                if isinstance(arguments, str):
+                    try:
+                        import json
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse tool arguments as JSON: {e}")
+                        arguments = {}
+                
+                tool_calls.append(ToolCall(
                     id=tc["id"],
                     name=tc["function"]["name"],
-                    arguments=tc["function"]["arguments"],
-                )
-                for tc in message["tool_calls"]
-            ]
+                    arguments=arguments,
+                ))
 
         return ChatResponse(
             message=ChatMessage(
