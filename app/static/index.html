@@ -93,10 +93,10 @@
         }
 
         .message {
-            margin-bottom: 0.5rem;
-            padding: 0.75rem;
-            border-radius: 12px;
-            max-width: 80%;
+            margin-bottom: 0.35rem;
+            padding: 0.6rem 0.75rem;
+            border-radius: 10px;
+            max-width: 85%;
         }
 
         .message.user {
@@ -499,17 +499,48 @@
             
             // Render markdown for assistant messages
             let renderedContent = content;
-            if (role === 'assistant' && typeof marked !== 'undefined') {
-                try {
-                    renderedContent = marked.parse(content);
-                } catch (e) {
-                    console.error('Markdown parsing error:', e);
-                    renderedContent = content;
+            
+            // Strip function calls and XML-like tags from display
+            content = content.replace(/<function=[^>]*>.*?<\/function>/gs, '');
+            content = content.replace(/<parameter=[^>]*>.*?<\/parameter>/gs, '');
+            content = content.replace(/<\/function>/g, '');
+            content = content.replace(/<\/parameter>/g, '');
+            
+            if (role === 'assistant') {
+                if (typeof marked !== 'undefined') {
+                    try {
+                        renderedContent = marked.parse(content);
+                    } catch (e) {
+                        renderedContent = simpleMarkdown(content);
+                    }
+                } else {
+                    renderedContent = simpleMarkdown(content);
                 }
             } else {
-                // For user messages or if marked not available, escape HTML
                 renderedContent = content.replace(/\n/g, '<br>');
             }
+            
+            
+        // Simple markdown fallback
+        function simpleMarkdown(text) {
+            // Escape HTML first
+            text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            
+            // Bold
+            text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // Italic
+            text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+            // Headers
+            text = text.replace(/^### (.+)$/gm, '<h4>$1</h4>');
+            text = text.replace(/^## (.+)$/gm, '<h3>$1</h3>');
+            text = text.replace(/^# (.+)$/gm, '<h2>$1</h2>');
+            // Line breaks
+            text = text.replace(/
+/g, '<br>');
+            
+            return text;
+        }
+
             
             messageDiv.innerHTML = `
                 <div class="role">${role === 'user' ? 'You' : 'Xiaomi MiMo'}</div>

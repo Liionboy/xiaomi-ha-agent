@@ -2,10 +2,14 @@
 
 from typing import Any
 from .mcp import MCPToolRegistry, ToolParameter
+from .ha_client import HAClient
 
 
 def register_all_tools(registry: MCPToolRegistry):
     """Register all MCP tools."""
+
+    # Initialize HA client
+    ha = HAClient()
 
     # ========================================
     # ENTITY TOOLS
@@ -20,78 +24,82 @@ def register_all_tools(registry: MCPToolRegistry):
     )
     async def get_entity_state(entity_id: str) -> dict:
         """Get entity state from Home Assistant."""
-        # TODO: Implement Home Assistant API call
-        return {"entity_id": entity_id, "state": "unknown", "attributes": {}}
+        try:
+            state = await ha.get_state(entity_id)
+            return {
+                "entity_id": state["entity_id"],
+                "state": state["state"],
+                "attributes": state.get("attributes", {}),
+                "last_changed": state.get("last_changed"),
+            }
+        except Exception as e:
+            return {"error": f"Failed to get state for {entity_id}: {str(e)}"}
 
     @registry.register(
         name="ha_list_entities",
-        description="List all Home Assistant entities",
+        description="List all Home Assistant entities, optionally filtered by domain",
         parameters=[
             ToolParameter(name="domain", type="string", description="Filter by domain (e.g., light, sensor)", required=False),
         ],
     )
     async def list_entities(domain: str = None) -> list[dict]:
         """List all entities."""
-        # TODO: Implement Home Assistant API call
-        return []
+        try:
+            states = await ha.get_states(domain)
+            return [
+                {
+                    "entity_id": s["entity_id"],
+                    "state": s["state"],
+                    "friendly_name": s.get("attributes", {}).get("friendly_name", s["entity_id"]),
+                }
+                for s in states
+            ]
+        except Exception as e:
+            return [{"error": f"Failed to list entities: {str(e)}"}]
 
     @registry.register(
         name="ha_call_service",
-        description="Call a Home Assistant service (e.g., turn_on, turn_off)",
+        description="Call a Home Assistant service to control devices (turn_on, turn_off, etc.)",
         parameters=[
             ToolParameter(name="domain", type="string", description="Service domain (e.g., light, switch)"),
             ToolParameter(name="service", type="string", description="Service name (e.g., turn_on, turn_off)"),
             ToolParameter(name="entity_id", type="string", description="Entity ID to control"),
-            ToolParameter(name="data", type="object", description="Additional service data", required=False),
+            ToolParameter(name="data", type="object", description="Additional service data (optional)", required=False),
         ],
     )
     async def call_service(domain: str, service: str, entity_id: str, data: dict = None) -> dict:
         """Call Home Assistant service."""
-        # TODO: Implement Home Assistant API call
-        return {"success": True, "service": f"{domain}.{service}", "entity_id": entity_id}
+        try:
+            result = await ha.call_service(domain, service, entity_id, data)
+            return {
+                "success": True,
+                "service": f"{domain}.{service}",
+                "entity_id": entity_id,
+                "result": result,
+            }
+        except Exception as e:
+            return {"success": False, "error": f"Failed to call {domain}.{service}: {str(e)}"}
 
     # ========================================
     # CONFIGURATION TOOLS
     # ========================================
 
     @registry.register(
-        name="ha_read_config",
-        description="Read a Home Assistant configuration file",
-        parameters=[
-            ToolParameter(name="filename", type="string", description="Configuration filename (e.g., configuration.yaml)"),
-        ],
-    )
-    async def read_config(filename: str) -> dict:
-        """Read configuration file."""
-        # TODO: Implement file reading with path validation
-        return {"filename": filename, "content": ""}
-
-    @registry.register(
-        name="ha_write_config",
-        description="Write to a Home Assistant configuration file with automatic backup",
-        parameters=[
-            ToolParameter(name="filename", type="string", description="Configuration filename"),
-            ToolParameter(name="content", type="string", description="New content"),
-        ],
-    )
-    async def write_config(filename: str, content: str) -> dict:
-        """Write configuration with backup."""
-        # TODO: Implement file writing with backup
-        return {"success": True, "filename": filename, "backup_created": True}
-
-    @registry.register(
-        name="ha_validate_config",
-        description="Validate Home Assistant configuration",
+        name="ha_check_config",
+        description="Validate Home Assistant configuration for errors",
         parameters=[],
     )
-    async def validate_config() -> dict:
-        """Validate HA configuration."""
-        # TODO: Implement config validation
-        return {"valid": True, "errors": [], "warnings": []}
-
-    # ========================================
-    # HOME ASSISTANT CONTROL
-    # ========================================
+    async def check_config() -> dict:
+        """Check HA configuration."""
+        try:
+            result = await ha.check_config()
+            return {
+                "valid": result.get("result", "") == "valid",
+                "errors": result.get("errors", ""),
+                "warnings": result.get("warnings", ""),
+            }
+        except Exception as e:
+            return {"valid": False, "error": str(e)}
 
     @registry.register(
         name="ha_restart",
@@ -100,36 +108,15 @@ def register_all_tools(registry: MCPToolRegistry):
     )
     async def restart_homeassistant() -> dict:
         """Restart Home Assistant."""
-        # TODO: Implement HA restart
-        return {"success": True, "message": "Home Assistant restarting..."}
-
-    @registry.register(
-        name="ha_check_config",
-        description="Check Home Assistant configuration for errors",
-        parameters=[],
-    )
-    async def check_config() -> dict:
-        """Check HA configuration."""
-        # TODO: Implement config check
-        return {"valid": True, "errors": []}
+        try:
+            await ha.restart()
+            return {"success": True, "message": "Home Assistant is restarting..."}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     # ========================================
-    # HISTORY & CONTEXT
+    # AUTOMATION & HISTORY
     # ========================================
-
-    @registry.register(
-        name="ha_get_history",
-        description="Get entity state history",
-        parameters=[
-            ToolParameter(name="entity_id", type="string", description="Entity ID"),
-            ToolParameter(name="start_time", type="string", description="Start time (ISO format)", required=False),
-            ToolParameter(name="end_time", type="string", description="End time (ISO format)", required=False),
-        ],
-    )
-    async def get_history(entity_id: str, start_time: str = None, end_time: str = None) -> list[dict]:
-        """Get entity history."""
-        # TODO: Implement history API
-        return []
 
     @registry.register(
         name="ha_get_automations",
@@ -138,17 +125,45 @@ def register_all_tools(registry: MCPToolRegistry):
     )
     async def get_automations() -> list[dict]:
         """Get all automations."""
-        # TODO: Implement automation listing
-        return []
+        try:
+            states = await ha.get_states("automation")
+            return [
+                {
+                    "entity_id": s["entity_id"],
+                    "state": s["state"],
+                    "friendly_name": s.get("attributes", {}).get("friendly_name", ""),
+                }
+                for s in states
+            ]
+        except Exception as e:
+            return [{"error": f"Failed to get automations: {str(e)}"}]
 
     @registry.register(
-        name="ha_create_automation",
-        description="Create a new automation",
+        name="ha_search_entities",
+        description="Search for entities by name or partial name",
         parameters=[
-            ToolParameter(name="config", type="string", description="Automation YAML configuration"),
+            ToolParameter(name="query", type="string", description="Search query (e.g., 'Plafoniera', 'Birou', 'living')"),
         ],
     )
-    async def create_automation(config: str) -> dict:
-        """Create automation from YAML."""
-        # TODO: Implement automation creation
-        return {"success": True, "automation_id": "new_automation"}
+    async def search_entities(query: str) -> list[dict]:
+        """Search entities by friendly name or entity_id."""
+        try:
+            states = await ha.get_states()
+            query_lower = query.lower()
+            
+            results = []
+            for s in states:
+                friendly_name = s.get("attributes", {}).get("friendly_name", "").lower()
+                entity_id = s["entity_id"].lower()
+                
+                if query_lower in friendly_name or query_lower in entity_id:
+                    results.append({
+                        "entity_id": s["entity_id"],
+                        "state": s["state"],
+                        "friendly_name": s.get("attributes", {}).get("friendly_name", s["entity_id"]),
+                        "domain": s["entity_id"].split(".")[0],
+                    })
+            
+            return results if results else [{"message": f"No entities found matching '{query}'"}]
+        except Exception as e:
+            return [{"error": f"Search failed: {str(e)}"}]

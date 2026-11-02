@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-11-02
+
+### Added
+- **Real Home Assistant API integration** (ha_client.py) - tools now speak to actual HA
+- New tool: `ha_search_entities` - search devices by name (e.g., "Plafoniera", "Birou")
+- All tools (list_entities, call_service, get_state, automations, check_config) now use real HA REST API
+
+### Fixed
+- Strip function call markup (`<function=...>`) from displayed messages
+- Built-in markdown parser as fallback when CDN fails in Ingress
+- Further reduced message spacing (margin 0.35rem, padding 0.6rem)
+
+
+## [0.2.2] - 2026-11-02
+
+### Fixed
+- Execute tool calls automatically and get follow-up response from AI
+- Reduce message spacing in chat UI
+- Tool results are now sent back to AI for natural conversation flow
+
+
 ## [0.2.1] - 2026-11-02
 
 ### Fixed
