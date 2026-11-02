@@ -13,7 +13,7 @@ hassio_api: true
 homeassistant_api: true
 hassio_role: manager
 ingress: true
-ingress_port: 8099
+ingress_port: 8100
 panel_icon: mdi:robot
 panel_title: Xiaomi AI
 map:
@@ -37,6 +37,6 @@ schema:
   temperature: float
   system_prompt: str
 ports:
-  8099/tcp: 8099
+  8100/tcp: 8100
 ports_description:
-  8099/tcp: Web UI
+  8100/tcp: Web UI
