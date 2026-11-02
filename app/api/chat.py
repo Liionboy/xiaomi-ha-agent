@@ -106,18 +106,22 @@ async def chat_completion(request: ChatRequest):
         )
 
     except Exception as e:
-        logger.error(f"Chat completion error: {type(e).__name__}: {e}", exc_info=True)
+        error_str = str(e)
+        logger.error(f"Chat completion error: {type(e).__name__}: {error_str}", exc_info=True)
         
         # Check for specific error types
-        error_msg = str(e)
-        if "401" in error_msg or "unauthorized" in error_msg.lower():
+        if "Name does not resolve" in error_str or "-2" in error_str:
+            error_msg = "DNS resolution failed. Cannot resolve api.xiaomi.com. Check your internet connection and DNS settings."
+        elif "401" in error_str or "unauthorized" in error_str.lower():
             error_msg = "Xiaomi API key is invalid or missing. Please check your configuration."
-        elif "404" in error_msg or "not found" in error_msg.lower():
+        elif "404" in error_str or "not found" in error_str.lower():
             error_msg = f"Model '{xiaomi.model}' not found. Please check your model configuration."
-        elif "timeout" in error_msg.lower():
+        elif "timeout" in error_str.lower():
             error_msg = "Xiaomi API request timed out. Please try again."
-        elif "connection" in error_msg.lower():
+        elif "connection" in error_str.lower():
             error_msg = "Cannot connect to Xiaomi API. Please check your internet connection and API URL."
+        else:
+            error_msg = f"Error: {error_str}"
         
         raise HTTPException(status_code=500, detail=error_msg)
 

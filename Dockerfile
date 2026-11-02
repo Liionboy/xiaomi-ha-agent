@@ -28,6 +28,10 @@ WORKDIR /app
 COPY app/ .
 COPY scripts/ /scripts/
 
+# Ensure DNS resolution works in container
+RUN echo 'nameserver 8.8.8.8' >> /etc/resolv.conf || true
+RUN echo 'nameserver 8.8.4.4' >> /etc/resolv.conf || true
+
 # Make scripts executable
 RUN chmod +x /scripts/*.sh
 
